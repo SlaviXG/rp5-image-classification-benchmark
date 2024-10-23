@@ -15,39 +15,23 @@ class ModelName(Enum):
     SQUEEZENET = "SqueezeNetV1.1"  # PyTorch
 
 def load_model_by_enum(model_name, accelerate=False):
-    if model_name == ModelName.RESNET50:
-        # PyTorch ResNet50
-        model = models.resnet50(pretrained=True)
+    if not accelerate:
+        if model_name == ModelName.RESNET50:
+            model = models.resnet50(pretrained=True)    
+        elif model_name == ModelName.MOBILENETV3:
+            model = models.mobilenet_v3_small(pretrained=True)
+        elif model_name == ModelName.RESNET18:
+            model = models.resnet18(pretrained=True)
+        elif model_name == ModelName.RESNEXT:
+            model = models.resnext50_32x4d(pretrained=True)
+        elif model_name == ModelName.SQUEEZENET:
+            model = models.squeezenet1_1(pretrained=True)
+        else:
+            print(f"Model {model_name} not supported yet.")
+            sys.exit(1)
         model.eval()
         print(f"Loaded PyTorch {model_name.value} pretrained on ImageNet")
         return model, 'pytorch'
-    elif model_name == ModelName.MOBILENETV3:
-        # PyTorch MobileNetV3
-        model = models.mobilenet_v3_small(pretrained=True)
-        model.eval()
-        print(f"Loaded PyTorch {model_name.value} pretrained on ImageNet")
-        return model, 'pytorch'
-    elif model_name == ModelName.RESNET18:
-        # PyTorch ResNet18
-        model = models.resnet18(pretrained=True)
-        model.eval()
-        print(f"Loaded PyTorch {model_name.value} pretrained on ImageNet")
-        return model, 'pytorch'
-    elif model_name == ModelName.RESNEXT:
-        # PyTorch ResNeXt-50-32x4d
-        model = models.resnext50_32x4d(pretrained=True)
-        model.eval()
-        print(f"Loaded PyTorch {model_name.value} pretrained on ImageNet")
-        return model, 'pytorch'
-    elif model_name == ModelName.SQUEEZENET:
-        # PyTorch SqueezeNetV1.1
-        model = models.squeezenet1_1(pretrained=True)
-        model.eval()
-        print(f"Loaded PyTorch {model_name.value} pretrained on ImageNet")
-        return model, 'pytorch'
-    else:
-        print(f"Model {model_name} not supported yet.")
-        sys.exit(1)
 
 def preprocess_image(image_path, target_size, framework='pytorch'):
     img = cv2.imread(image_path)
@@ -102,6 +86,7 @@ def main():
     model_name_input = sys.argv[1].upper()
     fps = float(sys.argv[2])
     images_dir = sys.argv[3]
+    accelerate = '--accelerate' in sys.argv
 
     try:
         model_name = ModelName[model_name_input]
@@ -113,7 +98,7 @@ def main():
         print(f"Directory does not exist: {images_dir}")
         sys.exit(1)
 
-    model, framework = load_model_by_enum(model_name)
+    model, framework = load_model_by_enum(model_name, accelerate)
     classify_images(model, images_dir, fps, framework)
 
 if __name__ == "__main__":
