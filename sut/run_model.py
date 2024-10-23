@@ -48,7 +48,12 @@ def load_model_by_enum(model_name, accelerate=False):
     
     # Hailo mode
     else:
-        model_path = MODEL_PATHS[model_name.value.upper()]  # Get Hailo .hef model path
+        model_key = model_name.value.replace('-', '_').upper()
+        if model_key not in MODEL_PATHS:
+            print(f"Hailo model path not found for {model_name.value}")
+            sys.exit(1)
+
+        model_path = MODEL_PATHS[model_key]  # Get Hailo .hef model path
         params = VDevice.create_params()
         params.scheduling_algorithm = HailoSchedulingAlgorithm.NONE
         target = VDevice(params=params)
@@ -68,6 +73,7 @@ def load_model_by_enum(model_name, accelerate=False):
 
         return (target, network_group, network_group_params, input_vstreams_params, output_vstreams_params, 
                 input_vstream_info, output_vstream_info, (image_height, image_width, channels)), 'hailo'
+
 
 def preprocess_image(image_path, target_size, framework='pytorch'):
     img = cv2.imread(image_path)
