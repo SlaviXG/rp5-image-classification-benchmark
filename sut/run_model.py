@@ -74,8 +74,6 @@ def load_model_by_enum(model_name, accelerate=False):
         return (target, network_group, network_group_params, input_vstreams_params, output_vstreams_params, 
                 input_vstream_info, output_vstream_info, (image_height, image_width, channels)), 'hailo'
 
-
-
 def preprocess_image(image_path, target_size, framework='pytorch'):
     img = cv2.imread(image_path)
     if img is None:
@@ -125,15 +123,14 @@ def classify_images(model, images_dir, fps, framework):
                     predicted_class = np.argmax(infer_results[output_vstream_info.name])
 
         finish_time = time.time()
-        time_taken = finish_time - start_time
-        actual_fps = 1 / time_taken
+        inference_time = finish_time - start_time
 
-        print(f"Image: {image_file}, Start: {int(start_time)}, Finish: {int(finish_time)}, "
-              f"Resolution: {original_resolution[1]}x{original_resolution[0]}, Framework: {framework.upper()}, FPS: {actual_fps:.2f}, "
+        print(f"Image: {image_file}, Resolution: {original_resolution[1]}x{original_resolution[0]}, "
+              f"Framework: {framework.upper()}, Set FPS: {fps}, Inference time: {inference_time:.4f} seconds, "
               f"Predicted class: {predicted_class}")
         
-        if time_taken < interval:
-            time.sleep(interval - time_taken)
+        if inference_time < interval:
+            time.sleep(interval - inference_time)
 
 def main():
     if len(sys.argv) < 4:
