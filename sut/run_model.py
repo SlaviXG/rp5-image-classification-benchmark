@@ -3,29 +3,30 @@ import os
 import time
 import cv2
 import numpy as np
-from tensorflow.keras.applications import ResNet50, MobileNetV3Small
 import torch
 import torchvision.models as models
 from enum import Enum
 
 class ModelName(Enum):
     RESNET18 = "ResNet18"  # PyTorch
-    RESNET50 = "ResNet50"  # TensorFlow
+    RESNET50 = "ResNet50"  # PyTorch
     RESNEXT = "ResNeXt-50-32x4d"  # PyTorch
-    MOBILENETV3 = "MobileNetV3"  # TensorFlow
+    MOBILENETV3 = "MobileNetV3"  # PyTorch
     SQUEEZENET = "SqueezeNetV1.1"  # PyTorch
 
 def load_model_by_enum(model_name, accelerate=False):
     if model_name == ModelName.RESNET50:
-        # TensorFlow ResNet50
-        model = ResNet50(weights="imagenet")
-        print(f"Loaded TensorFlow {model_name.value} pretrained on ImageNet")
-        return model, 'tensorflow'
+        # PyTorch ResNet50
+        model = models.resnet50(pretrained=True)
+        model.eval()
+        print(f"Loaded PyTorch {model_name.value} pretrained on ImageNet")
+        return model, 'pytorch'
     elif model_name == ModelName.MOBILENETV3:
-        # TensorFlow MobileNetV3
-        model = MobileNetV3Small(weights="imagenet")
-        print(f"Loaded TensorFlow {model_name.value} pretrained on ImageNet")
-        return model, 'tensorflow'
+        # PyTorch MobileNetV3
+        model = models.mobilenet_v3_small(pretrained=True)
+        model.eval()
+        print(f"Loaded PyTorch {model_name.value} pretrained on ImageNet")
+        return model, 'pytorch'
     elif model_name == ModelName.RESNET18:
         # PyTorch ResNet18
         model = models.resnet18(pretrained=True)
@@ -48,23 +49,18 @@ def load_model_by_enum(model_name, accelerate=False):
         print(f"Model {model_name} not supported yet.")
         sys.exit(1)
 
-def preprocess_image(image_path, target_size, framework='tensorflow'):
+def preprocess_image(image_path, target_size, framework='pytorch'):
     img = cv2.imread(image_path)
     if img is None:
         print(f"Failed to load image: {image_path}")
         return None, None
     original_resolution = img.shape[:2]  # Height x Width
     img = cv2.resize(img, target_size)
-    
-    if framework == 'tensorflow':
-        # For TensorFlow models
-        img = img.astype('float32') / 255.0
-        img = np.expand_dims(img, axis=0)
-    elif framework == 'pytorch':
-        # For PyTorch models
-        img = img.transpose(2, 0, 1)  # Change from HxWxC to CxHxW
-        img = torch.tensor(img, dtype=torch.float32) / 255.0
-        img = img.unsqueeze(0)  # Add batch dimension
+
+    # For PyTorch models
+    img = img.transpose(2, 0, 1)  # Change from HxWxC to CxHxW
+    img = torch.tensor(img, dtype=torch.float32) / 255.0
+    img = img.unsqueeze(0)  # Add batch dimension
     return img, original_resolution
 
 def classify_images(model, images_dir, fps, framework):
@@ -83,13 +79,9 @@ def classify_images(model, images_dir, fps, framework):
         if img is None:
             continue
 
-        if framework == 'tensorflow':
-            predictions = model.predict(img)
-            predicted_class = np.argmax(predictions)
-        elif framework == 'pytorch':
-            with torch.no_grad():
-                predictions = model(img)
-                predicted_class = predictions.argmax(dim=1).item()
+        with torch.no_grad():
+            predictions = model(img)
+            predicted_class = predictions.argmax(dim=1).item()
 
         finish_time = time.time()
         time_taken = finish_time - start_time
@@ -110,7 +102,6 @@ def main():
     model_name_input = sys.argv[1].upper()
     fps = float(sys.argv[2])
     images_dir = sys.argv[3]
-    accelerate = '--accelerate' in sys.argv
 
     try:
         model_name = ModelName[model_name_input]
@@ -122,7 +113,7 @@ def main():
         print(f"Directory does not exist: {images_dir}")
         sys.exit(1)
 
-    model, framework = load_model_by_enum(model_name, accelerate)
+    model, framework = load_model_by_enum(model_name)
     classify_images(model, images_dir, fps, framework)
 
 if __name__ == "__main__":
