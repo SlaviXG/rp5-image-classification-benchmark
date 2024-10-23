@@ -1,0 +1,6 @@
+[submodule "mqtt_system_governor"]
+	path = mqtt_system_governor
+	url = https://github.com/SlaviXG/mqtt_system_governor
+[submodule "fnirsi-usb-power-data-logger"]
+	path = fnirsi-usb-power-data-logger
+	url = https://github.com/baryluk/fnirsi-usb-power-data-logger
