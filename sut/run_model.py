@@ -59,7 +59,7 @@ def load_model_by_enum(model_name, accelerate=False):
         target = VDevice(params=params)
 
         hef = HEF(model_path)
-        configure_params = ConfigureParams.create_from_hef(hef=hef, interface=HailoStreamInterface.PCIE)
+        configure_params = ConfigureParams.create_from_hef(hef=hef, interface=HailoStreamInterface.PCIe)
         network_groups = target.configure(hef, configure_params)
         network_group = network_groups[0]
         network_group_params = network_group.create_params()
