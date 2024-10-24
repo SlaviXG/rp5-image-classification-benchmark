@@ -79,25 +79,28 @@ class StressRaspberry:
 
     def fill_command_queue(self):
         models = ["RESNET50", "MOBILENETV3", "RESNET18", "RESNEXT", "SQUEEZENET"]
+
+        # Fractional FPS values from 1/10 to 1
         for model in models:
-            for i in range(10, 0):
-                fps = 1/i
-                self.command_queue.put(f"python run_model.py {model} {fps} ./images")
+            for i in range(10, 0, -1):  # iterate from 10 down to 1
+                fps = 1 / i
+                self.command_queue.put(f"python run_model.py {model} {fps:.2f} ./images")
             
-            for i in range(1, 11):
+            # Integer FPS values from 1 to 10
+            for i in range(1, 11):  # iterate from 1 to 10
                 fps = i
                 self.command_queue.put(f"python run_model.py {model} {fps} ./images")
 
-            for i in range(10, 0):
-                fps = 1/i
-                self.command_queue.put(f"python run_model.py {model} {fps} ./images --accelerate")
-                
+            # Repeat for accelerated models
+            for i in range(10, 0, -1):
+                fps = 1 / i
+                self.command_queue.put(f"python run_model.py {model} {fps:.2f} ./images --accelerate")
+            
             for i in range(1, 11):
                 fps = i
                 self.command_queue.put(f"python run_model.py {model} {fps} ./images --accelerate")
-                
+
         color_log.log_info(f"{get_current_time()} -- Command queue has been filled")
-        
 
     def start_power_data_logger(self):
         self._power_data_logger_process = subprocess.Popen(LOGGER_STARTING_COMMAND,
