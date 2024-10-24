@@ -87,7 +87,7 @@ class StressRaspberry:
                 self.command_queue.put(f"python run_model.py {model} {fps:.3f} ./images")
             
             # Integer FPS values from 1 to 10
-            for i in range(1, 11):  # iterate from 1 to 10
+            for i in range(2, 11):  # iterate from 1 to 10
                 fps = i
                 self.command_queue.put(f"python run_model.py {model} {fps} ./images")
 
@@ -96,7 +96,7 @@ class StressRaspberry:
                 fps = 1 / i
                 self.command_queue.put(f"python run_model.py {model} {fps:.3f} ./images --accelerate")
             
-            for i in range(1, 11):
+            for i in range(2, 11):
                 fps = i
                 self.command_queue.put(f"python run_model.py {model} {fps} ./images --accelerate")
 
