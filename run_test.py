@@ -18,7 +18,7 @@ from mqtt_system_governor.commander import BaseCommander
 RASPBERRY_CLIENT_ID = "client1"
 MAX_TEMPERATURE_DIFFERENCE = 30
 ITERATION_TESTING_TIME = 15
-LOGGER_STARTING_COMMAND = "sudo fnirsi_usb_power_data_logger/fnirsi_logger.py"
+LOGGER_STARTING_COMMAND = "sudo ./fnirsi-usb-power-data-logger/fnirsi_logger.py"
 COMMAND_FEEDBACK_FILE = "command_feedback.txt"
 LOGGER_OUTPUT_FILE = "data_logger.txt"
 START_OPERATOR_COMMAND = "python3 mqtt_system_governor/operator.py --config=mqtt_system_governor/config.ini"
@@ -124,9 +124,6 @@ class StressRaspberry:
     def clear_command_feedback_file():
         open(COMMAND_FEEDBACK_FILE, 'w').close()
 
-    @staticmethod
-    def form_cpu_stress_command(utilization, cores=0, time=ITERATION_TESTING_TIME):
-        return f"stress-ng --cpu {cores} --cpu-load {utilization} --timeout {time}s --metrics-brief"
 
     @staticmethod
     def parse_logger_output_line(line):
