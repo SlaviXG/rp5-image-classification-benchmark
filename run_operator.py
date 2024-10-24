@@ -95,6 +95,8 @@ class StressRaspberry:
             for i in range(1, 11):
                 fps = i
                 self.command_queue.put(f"python run_model.py {model} {fps} ./images --accelerate")
+                
+        color_log.log_info(f"{get_current_time()} -- Command queue has been filled")
         
 
     def start_power_data_logger(self):
@@ -106,6 +108,7 @@ class StressRaspberry:
     def start_operator(self):
         with open(os.devnull, 'w') as devnull:
             self.operator_process = subprocess.Popen(START_OPERATOR_COMMAND, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+            color_log.log_info(f"{get_current_time()} -- Operator process has been started")
             return self.operator_process
 
     def terminate_processes(self):
