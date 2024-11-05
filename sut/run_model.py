@@ -125,7 +125,6 @@ def classify_images(model, images_dir, fps, framework):
         finish_time = time.time()
         inference_time = finish_time - start_time
 
-        # Use target_size for the resolution in the output instead of original_resolution
         print(f"Image: {image_file}, Model Resolution: {target_size[1]}x{target_size[0]}, "
               f"Framework: {framework.upper()}, Set FPS: {fps}, Inference time: {inference_time:.4f} seconds, "
               f"Predicted class: {predicted_class}")
