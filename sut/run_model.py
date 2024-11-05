@@ -101,11 +101,11 @@ def classify_images(model, images_dir, fps, framework):
         if not image_file.endswith(('.jpg', '.jpeg', '.png')):
             continue
 
-        start_time = time.time()
-
         img, original_resolution = preprocess_image(image_path, target_size, framework)
         if img is None:
             continue
+
+        start_time = time.time()
 
         if framework == 'pytorch':
             with torch.no_grad():
@@ -125,13 +125,14 @@ def classify_images(model, images_dir, fps, framework):
         finish_time = time.time()
         inference_time = finish_time - start_time
 
-        print(f"Image: {image_file}, Resolution: {original_resolution[1]}x{original_resolution[0]}, "
+        # Use target_size for the resolution in the output instead of original_resolution
+        print(f"Image: {image_file}, Model Resolution: {target_size[1]}x{target_size[0]}, "
               f"Framework: {framework.upper()}, Set FPS: {fps}, Inference time: {inference_time:.4f} seconds, "
               f"Predicted class: {predicted_class}")
         
         if inference_time < interval:
             time.sleep(interval - inference_time)
-
+          
 def main():
     if len(sys.argv) < 4:
         print("Usage: python <script_name.py> <model_name> <fps> <images_directory_path> [--accelerate]")
