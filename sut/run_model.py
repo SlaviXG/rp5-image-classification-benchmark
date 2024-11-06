@@ -4,6 +4,8 @@ import time
 import cv2
 import numpy as np
 import torch
+import psutil  # For continuous CPU monitoring
+import threading
 import torchvision.models as models
 from enum import Enum
 from hailo_platform import (HEF, ConfigureParams, FormatType, HailoSchedulingAlgorithm, HailoStreamInterface,
@@ -26,11 +28,35 @@ class ModelName(Enum):
     MOBILENETV3 = "MobileNetV3"
     SQUEEZENET = "SqueezeNetV1.1"
 
+class ContinuousCPUMonitor:
+    def __init__(self, interval=0.01):  # Monitoring interval set to 10 ms
+        self.interval = interval
+        self.cpu_usage = []
+        self.running = False
+        self.thread = None
+
+    def start(self):
+        self.running = True
+        self.thread = threading.Thread(target=self._monitor)
+        self.thread.start()
+
+    def _monitor(self):
+        while self.running:
+            self.cpu_usage.append(psutil.cpu_percent(interval=None))
+            time.sleep(self.interval)
+
+    def stop(self):
+        self.running = False
+        if self.thread:
+            self.thread.join()
+
+    def get_average_cpu_usage(self):
+        return sum(self.cpu_usage) / len(self.cpu_usage) if self.cpu_usage else 0
+
 def load_model_by_enum(model_name, accelerate=False):
     if not accelerate:
-        # PyTorch mode
         if model_name == ModelName.RESNET50:
-            model = models.resnet50(pretrained=True)    
+            model = models.resnet50(pretrained=True)
         elif model_name == ModelName.MOBILENETV3:
             model = models.mobilenet_v3_small(pretrained=True)
         elif model_name == ModelName.RESNET18:
@@ -46,10 +72,9 @@ def load_model_by_enum(model_name, accelerate=False):
         print(f"Loaded PyTorch {model_name.value} pretrained on ImageNet")
         return model, 'pytorch'
     
-    # Hailo mode
     else:
         try:
-            model_path = MODEL_PATHS[model_name.name]  # Get Hailo .hef model path
+            model_path = MODEL_PATHS[model_name.name]
         except KeyError:
             print(f"Hailo model path not found for {model_name.name}")
             sys.exit(1)
@@ -79,22 +104,23 @@ def preprocess_image(image_path, target_size, framework='pytorch'):
     if img is None:
         print(f"Failed to load image: {image_path}")
         return None, None
-    original_resolution = img.shape[:2]  # Height x Width
+    original_resolution = img.shape[:2]
     img = cv2.resize(img, target_size)
 
     if framework == 'pytorch':
-        img = img.transpose(2, 0, 1)  # Change from HxWxC to CxHxW
+        img = img.transpose(2, 0, 1)
         img = torch.tensor(img, dtype=torch.float32) / 255.0
-        img = img.unsqueeze(0)  # Add batch dimension
+        img = img.unsqueeze(0)
     elif framework == 'hailo':
-        img = img.astype(np.float32) / 255.0  # Normalize and convert to float32
-        img = np.expand_dims(img, axis=0)  # Add batch dimension for Hailo
+        img = img.astype(np.float32) / 255.0
+        img = np.expand_dims(img, axis=0)
     return img, original_resolution
 
 def classify_images(model, images_dir, fps, framework):
-    target_size = (224, 224)  # Most models use this input size
+    target_size = (224, 224)
     interval = 1 / fps
-
+    cpu_monitor = ContinuousCPUMonitor(interval=0.01)  # Set finer interval of 10 ms
+    
     for image_file in sorted(os.listdir(images_dir)):
         image_path = os.path.join(images_dir, image_file)
         
@@ -105,6 +131,7 @@ def classify_images(model, images_dir, fps, framework):
         if img is None:
             continue
 
+        cpu_monitor.start()
         start_time = time.time()
 
         if framework == 'pytorch':
@@ -119,19 +146,22 @@ def classify_images(model, images_dir, fps, framework):
             input_data = {input_vstream_info.name: img}
             with InferVStreams(network_group, input_vstreams_params, output_vstreams_params) as infer_pipeline:
                 with network_group.activate(network_group_params):
-                    infer_results = infer_pipeline.infer(input_data)
-                    predicted_class = np.argmax(infer_results[output_vstream_info.name])
+                    infer_pipeline.infer(input_data)
+                    predicted_class = np.argmax(infer_pipeline.infer(input_data)[output_vstream_info.name])
 
-        finish_time = time.time()
-        inference_time = finish_time - start_time
+        inference_time = time.time() - start_time
+        cpu_monitor.stop()
 
+        avg_cpu_usage = cpu_monitor.get_average_cpu_usage()
         print(f"Image: {image_file}, Model Resolution: {target_size[1]}x{target_size[0]}, "
               f"Framework: {framework.upper()}, Set FPS: {fps}, Inference time: {inference_time:.4f} seconds, "
-              f"Predicted class: {predicted_class}")
-        
+              f"Average CPU Usage: {avg_cpu_usage:.2f}%, Predicted class: {predicted_class}")
+
+        cpu_monitor.cpu_usage.clear()  # Clear CPU usage data for the next image
+
         if inference_time < interval:
             time.sleep(interval - inference_time)
-          
+
 def main():
     if len(sys.argv) < 4:
         print("Usage: python <script_name.py> <model_name> <fps> <images_directory_path> [--accelerate]")
