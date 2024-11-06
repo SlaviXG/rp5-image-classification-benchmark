@@ -4,7 +4,7 @@ import time
 import cv2
 import numpy as np
 import torch
-import psutil  # For continuous CPU monitoring
+import psutil
 import threading
 import torchvision.models as models
 from enum import Enum
