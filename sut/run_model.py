@@ -117,10 +117,9 @@ def preprocess_image(image_path, target_size, framework='pytorch'):
     return img, original_resolution
 
 def classify_images(model, images_dir, fps, framework):
-    target_size = (224, 224)
+    target_size = (224, 224)  # Most models use this input size
     interval = 1 / fps
-    cpu_monitor = ContinuousCPUMonitor(interval=0.01)  # Set finer interval of 10 ms
-    
+
     for image_file in sorted(os.listdir(images_dir)):
         image_path = os.path.join(images_dir, image_file)
         
@@ -131,8 +130,7 @@ def classify_images(model, images_dir, fps, framework):
         if img is None:
             continue
 
-        cpu_monitor.start()
-        start_time = time.time()
+        start_inference_time = time.time()
 
         if framework == 'pytorch':
             with torch.no_grad():
@@ -140,25 +138,23 @@ def classify_images(model, images_dir, fps, framework):
                 predicted_class = predictions.argmax(dim=1).item()
 
         elif framework == 'hailo':
-            (target, network_group, network_group_params, input_vstreams_params, output_vstreams_params, 
-             input_vstream_info, output_vstream_info, input_shape) = model
+            (target, network_group, network_group_params, input_vstreams_params, 
+             output_vstreams_params, input_vstream_info, output_vstream_info, input_shape) = model
             
             input_data = {input_vstream_info.name: img}
             with InferVStreams(network_group, input_vstreams_params, output_vstreams_params) as infer_pipeline:
                 with network_group.activate(network_group_params):
-                    infer_pipeline.infer(input_data)
-                    predicted_class = np.argmax(infer_pipeline.infer(input_data)[output_vstream_info.name])
+                    infer_results = infer_pipeline.infer(input_data)
+                    predicted_class = np.argmax(infer_results[output_vstream_info.name])
 
-        inference_time = time.time() - start_time
-        cpu_monitor.stop()
+        end_inference_time = time.time()
+        inference_time = end_inference_time - start_inference_time
 
-        avg_cpu_usage = cpu_monitor.get_average_cpu_usage()
         print(f"Image: {image_file}, Model Resolution: {target_size[1]}x{target_size[0]}, "
               f"Framework: {framework.upper()}, Set FPS: {fps}, Inference time: {inference_time:.4f} seconds, "
-              f"Average CPU Usage: {avg_cpu_usage:.2f}%, Predicted class: {predicted_class}")
-
-        cpu_monitor.cpu_usage.clear()  # Clear CPU usage data for the next image
-
+              f"Predicted class: {predicted_class}, "
+              f"Start Time: {start_inference_time}, End Time: {end_inference_time}")
+        
         if inference_time < interval:
             time.sleep(interval - inference_time)
 
