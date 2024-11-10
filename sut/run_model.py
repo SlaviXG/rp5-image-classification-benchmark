@@ -119,6 +119,7 @@ def preprocess_image(image_path, target_size, framework='pytorch'):
 def classify_images(model, images_dir, fps, framework):
     target_size = (224, 224)  # Most models use this input size
     interval = 1 / fps
+    cpu_monitor = ContinuousCPUMonitor(interval=0.01)
 
     for image_file in sorted(os.listdir(images_dir)):
         image_path = os.path.join(images_dir, image_file)
@@ -130,6 +131,7 @@ def classify_images(model, images_dir, fps, framework):
         if img is None:
             continue
 
+        cpu_monitor.start()
         start_inference_time = time.time()
 
         if framework == 'pytorch':
@@ -149,10 +151,13 @@ def classify_images(model, images_dir, fps, framework):
 
         end_inference_time = time.time()
         inference_time = end_inference_time - start_inference_time
+        cpu_monitor.stop()
+        avg_cpu_usage = cpu_monitor.get_average_cpu_usage()
 
         print(f"Image: {image_file}, Model Resolution: {target_size[1]}x{target_size[0]}, "
               f"Framework: {framework.upper()}, Set FPS: {fps}, Inference time: {inference_time:.4f} seconds, "
               f"Predicted class: {predicted_class}, "
+              f"Average CPU Usage: {avg_cpu_usage:.2f}%, "
               f"Start Time: {start_inference_time}, End Time: {end_inference_time}")
         
         if inference_time < interval:
