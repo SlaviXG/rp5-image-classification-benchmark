@@ -36,6 +36,7 @@ class ContinuousCPUMonitor:
         self.thread = None
 
     def start(self):
+        self.cpu_usage = []
         self.running = True
         self.thread = threading.Thread(target=self._monitor)
         self.thread.start()
