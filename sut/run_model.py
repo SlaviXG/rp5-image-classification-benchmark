@@ -152,6 +152,10 @@ def classify_images(model, images_dir, fps, framework):
 
         end_inference_time = time.time()
         inference_time = end_inference_time - start_inference_time
+      
+        if inference_time < interval:
+            time.sleep(interval - inference_time)
+
         cpu_monitor.stop()
         avg_cpu_usage = cpu_monitor.get_average_cpu_usage()
 
@@ -160,9 +164,6 @@ def classify_images(model, images_dir, fps, framework):
               f"Predicted class: {predicted_class}, "
               f"Average CPU Usage: {avg_cpu_usage:.2f}%, "
               f"Start Time: {start_inference_time}, End Time: {end_inference_time}")
-        
-        if inference_time < interval:
-            time.sleep(interval - inference_time)
 
 def main():
     if len(sys.argv) < 4:
